@@ -1,6 +1,5 @@
 #import "ReactNativePayments.h"
 #import <React/RCTUtils.h>
-#import <React/RCTEventDispatcher.h>
 
 @implementation ReactNativePayments
 @synthesize bridge = _bridge;
@@ -15,6 +14,16 @@ RCT_EXPORT_MODULE()
 + (BOOL)requiresMainQueueSetup
 {
     return YES;
+}
+
+// Required for RCTEventEmitter
+- (NSArray<NSString *> *)supportedEvents
+{
+    return @[@"NativePayments:onuseraccept", 
+             @"NativePayments:onuserdismiss", 
+             @"NativePayments:ongatewayerror",
+             @"NativePayments:onshippingaddresschange",
+             @"NativePayments:onshippingoptionchange"];
 }
 
 - (NSDictionary *)constantsToExport
@@ -99,7 +108,7 @@ RCT_EXPORT_METHOD(complete: (NSString *)paymentStatus
 -(void) paymentAuthorizationViewControllerDidFinish:(PKPaymentAuthorizationViewController *)controller
 {
     [controller dismissViewControllerAnimated:YES completion:nil];
-    [self.bridge.eventDispatcher sendDeviceEventWithName:@"NativePayments:onuserdismiss" body:nil];
+    [self sendEventWithName:@"NativePayments:onuserdismiss" body:nil];
 }
 
 RCT_EXPORT_METHOD(handleDetailsUpdate: (NSDictionary *)details
@@ -186,7 +195,7 @@ RCT_EXPORT_METHOD(handleDetailsUpdate: (NSDictionary *)details
     
     CNPostalAddress *postalAddress = contact.postalAddress;
     // street, subAdministrativeArea, and subLocality are supressed for privacy
-    [self.bridge.eventDispatcher sendDeviceEventWithName:@"NativePayments:onshippingaddresschange"
+    [self sendEventWithName:@"NativePayments:onshippingaddresschange"
                                                     body:@{
                                                            @"recipient": [NSNull null],
                                                            @"organization": [NSNull null],
@@ -209,7 +218,7 @@ RCT_EXPORT_METHOD(handleDetailsUpdate: (NSDictionary *)details
 {
     self.shippingMethodCompletion = completion;
     
-    [self.bridge.eventDispatcher sendDeviceEventWithName:@"NativePayments:onshippingoptionchange" body:@{
+    [self sendEventWithName:@"NativePayments:onshippingoptionchange" body:@{
                                                                                                          @"selectedShippingOptionId": shippingMethod.identifier
                                                                                                          }];
     
@@ -486,14 +495,14 @@ RCT_EXPORT_METHOD(handleDetailsUpdate: (NSDictionary *)details
         paymentResponse[@"shippingContact"] = [self contactToString:payment.shippingContact];
     }
     
-    [self.bridge.eventDispatcher sendDeviceEventWithName:@"NativePayments:onuseraccept"
+    [self sendEventWithName:@"NativePayments:onuseraccept"
                                                     body:paymentResponse
      ];
 }
 
 - (void)handleGatewayError:(NSError *_Nonnull)error
 {
-    [self.bridge.eventDispatcher sendDeviceEventWithName:@"NativePayments:ongatewayerror"
+    [self sendEventWithName:@"NativePayments:ongatewayerror"
                                                     body: @{
                                                             @"error": [error localizedDescription]
                                                             }
